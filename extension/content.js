@@ -1,8 +1,8 @@
-// content.js - Gugu Grab 1.1.0
+// content.js - Gugu Grab 1.0.1
 // Injects MP3 / MP4 buttons into YouTube's action bar (and a floating pill on
 // Shorts). Re-checks on SPA navigation and on DOM churn.
 
-const VERSION = "1.3.0";
+const VERSION = "1.0.1";
 const TAG = "[Gugu]";
 const WRAP_ID = "ytg-wrap";
 const TOAST_ID = "ytg-toast";
