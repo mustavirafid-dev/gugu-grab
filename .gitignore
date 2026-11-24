@@ -24,3 +24,6 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# plain-text readme kept for zip sharing only
+README.txt
