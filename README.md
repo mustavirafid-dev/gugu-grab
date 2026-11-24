@@ -2,6 +2,8 @@
 
 **One-click MP3 / MP4 buttons inside YouTube. No account, no ads, no cloud, nothing uploaded.**
 
+<p><sub>Built by <a href="https://github.com/mustavirafid-dev"><b>Mustavi Rafid</b></a> — idea, design and code.</sub></p>
+
 Gugu Grab adds two buttons to every YouTube video and Short — `MP3` and `MP4`. Click one, the file is saved to a folder you pick. The audio conversion, metadata tagging and cover-art embedding happen on your own machine.
 
 It is a thin browser extension plus a small local helper that drives [yt-dlp](https://github.com/yt-dlp/yt-dlp) and `ffmpeg`. Nothing leaves your computer.
@@ -121,6 +123,16 @@ This is a UI over `yt-dlp`, which you can use directly without this project. It 
 **You are responsible for what you download.** Downloading copyrighted material without permission may be illegal where you live and violates YouTube's Terms of Service. Use it for content you own, content licensed for reuse (Creative Commons, public domain), or content you have explicit permission to copy.
 
 Provided as-is under the MIT licence, with no warranty of any kind.
+
+---
+
+## Author
+
+**Mustavi Rafid** — [@mustavirafid-dev](https://github.com/mustavirafid-dev)
+
+Built by me, from the original idea to the code. `mustavirafid-dev` is just the account handle — the person behind it is Mustavi Rafid.
+
+If you fork this, remix it or ship it inside something else, a link back is appreciated but not required. Bug reports and pull requests are welcome.
 
 ## Licence
 
