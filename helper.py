@@ -28,12 +28,14 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 ALLOWED_ORIGIN_PREFIXES = ("chrome-extension://", "moz-extension://")
 LOOPBACK_PREFIXES = ("http://127.0.0.1:", "http://localhost:", "http://[::1]:")
 
 JOBS = {}
 JOBS_LOCK = threading.Lock()
+# serialises the actual download+rename so two jobs never touch the same file
+RUN_LOCK = threading.Lock()
 INBOX = None
 PORT = 8765
 MAX_JOBS = 200
@@ -156,6 +158,13 @@ def announce_saved(src):
 
 
 def run_job(job_id, url, fmt):
+    # One download at a time. Two jobs for the same video write to the same
+    # filenames, and Windows then refuses yt-dlp's rename with WinError 32.
+    with RUN_LOCK:
+        _run_locked(job_id, url, fmt)
+
+
+def _run_locked(job_id, url, fmt):
     with JOBS_LOCK:
         JOBS[job_id].update(status="running", started=time.time())
     log(f"job {job_id[:8]} start  fmt={fmt}  {url}")
@@ -184,12 +193,15 @@ def run_job(job_id, url, fmt):
             pick = max(new_media, key=lambda n: after.get(n, 0))
             src = INBOX / pick
             clean = tidy_name(pick)
-            if clean != pick:
-                try:
-                    src.rename(INBOX / clean)
-                    src = INBOX / clean
-                except OSError:
-                    pass
+            if clean != pick and not (INBOX / clean).exists():
+                # antivirus scanners and media players hold files briefly
+                for _ in range(6):
+                    try:
+                        src.rename(INBOX / clean)
+                        src = INBOX / clean
+                        break
+                    except OSError:
+                        time.sleep(0.5)
             j.update(status="done", file=str(src), name=src.name)
             announce_saved(src)
             return
@@ -475,8 +487,17 @@ class Handler(BaseHTTPRequestHandler):
         if fmt not in ("mp3", "mp4"):
             fmt = "mp3"
 
-        job_id = str(uuid.uuid4())
         with JOBS_LOCK:
+            # same video + same format already queued? reuse it instead of
+            # starting a second download that fights over the same files.
+            for existing in JOBS.values():
+                if (existing["url"] == url and existing["format"] == fmt
+                        and existing["status"] in ("pending", "running")):
+                    self.reply(200, {"id": existing["id"],
+                                     "status": existing["status"],
+                                     "duplicate": True})
+                    return
+            job_id = str(uuid.uuid4())
             JOBS[job_id] = {
                 "id": job_id, "url": url, "format": fmt,
                 "status": "pending", "file": "", "name": "",
