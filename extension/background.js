@@ -38,13 +38,13 @@ async function api(path, options) {
   return data;
 }
 
-async function grab({ url, format, tabId }) {
+async function grab({ url, format, quality, tabId }) {
   let job;
   try {
     job = await api("/download", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, format })
+      body: JSON.stringify({ url, format, quality })
     });
   } catch (err) {
     const msg = String(err?.message || err);
@@ -55,7 +55,7 @@ async function grab({ url, format, tabId }) {
     return { ok: false, error: hint };
   }
 
-  console.log(TAG, "job queued", job.id, format, url);
+  console.log(TAG, "job queued", job.id, format, quality, url);
   watch(job.id, tabId);
   return { ok: true, id: job.id };
 }
@@ -95,6 +95,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     grab({
       url: msg.url,
       format: msg.format === "mp4" ? "mp4" : "mp3",
+      quality: msg.quality || "1080",
       tabId: sender.tab?.id
     }).then(sendResponse);
     return true; // async response

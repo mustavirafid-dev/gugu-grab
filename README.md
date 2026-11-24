@@ -23,7 +23,7 @@ Most "YouTube downloader" extensions either want an account, show ads, upload yo
 | Ads | none | yes |
 | Your URLs sent to a third party | never | always |
 | Works on Shorts | yes | sometimes |
-| Output quality | MP3 320 kbps / MP4 1080p | capped or paid |
+| Output quality | MP3 320 kbps, MP4 selectable up to 4K | capped or paid |
 | Cost | free | freemium |
 
 ---
@@ -54,6 +54,10 @@ Open any YouTube video. The buttons appear next to Share. On Shorts they float o
 ## Usage
 
 Click `MP3` or `MP4`. The button shows `…` while working, `✓` when saved, `✕` on failure. A toast tells you the filename.
+
+**Video quality is selectable.** A dropdown sits next to the MP4 button: `Best available`, `2160p 4K`, `1440p`, `1080p`, `720p`, `480p`. It defaults to 1080p and remembers your choice. `Best available` grabs whatever the video actually offers, so a 4K upload gives you 4K.
+
+Note that above 1080p YouTube only serves VP9 or AV1, so a 4K download is an `.mp4` containing VP9/AV1 rather than H.264. It plays fine in Chrome, VLC, mpv and modern editors, but older hardware players may not decode it.
 
 Change the save folder any time: <http://127.0.0.1:8765/setup>
 

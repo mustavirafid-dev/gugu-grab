@@ -28,7 +28,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.4.2"
+VERSION = "1.5.0"
 ALLOWED_ORIGIN_PREFIXES = ("chrome-extension://", "moz-extension://")
 LOOPBACK_PREFIXES = ("http://127.0.0.1:", "http://localhost:", "http://[::1]:")
 
@@ -84,7 +84,11 @@ def safe(name, limit=150):
 MEDIA_EXT = (".mp3", ".mp4", ".m4a", ".webm", ".opus", ".flac")
 
 
-def build_cmd(url, fmt):
+QUALITY_HEIGHTS = {"best": None, "2160": 2160, "1440": 1440,
+                   "1080": 1080, "720": 720, "480": 480}
+
+
+def build_cmd(url, fmt, quality="1080"):
     # %(title,id) = title, falling back to the video id if the title is empty
     out_tmpl = str(INBOX / "%(title,id).140B [%(id)s].%(ext)s")
     cmd = [
@@ -99,8 +103,13 @@ def build_cmd(url, fmt):
         "--output", out_tmpl,
     ]
     if fmt == "mp4":
+        height = QUALITY_HEIGHTS.get(str(quality), 1080)
+        if height is None:                      # best available, could be 4K/8K
+            selector = "bv*+ba/b"
+        else:
+            selector = f"bv*[height<={height}]+ba/b[height<={height}]/b"
         cmd += [
-            "--format", "bv*[height<=1080]+ba/b[height<=1080]/b",
+            "--format", selector,
             "--merge-output-format", "mp4",
             "--embed-metadata",
         ]
@@ -157,21 +166,21 @@ def announce_saved(src):
             print(f"  (could not open the folder: {e})", flush=True)
 
 
-def run_job(job_id, url, fmt):
+def run_job(job_id, url, fmt, quality="1080"):
     # One download at a time. Two jobs for the same video write to the same
     # filenames, and Windows then refuses yt-dlp's rename with WinError 32.
     with RUN_LOCK:
-        _run_locked(job_id, url, fmt)
+        _run_locked(job_id, url, fmt, quality)
 
 
-def _run_locked(job_id, url, fmt):
+def _run_locked(job_id, url, fmt, quality="1080"):
     with JOBS_LOCK:
         JOBS[job_id].update(status="running", started=time.time())
-    log(f"job {job_id[:8]} start  fmt={fmt}  {url}")
+    log(f"job {job_id[:8]} start  fmt={fmt}  q={quality}  {url}")
 
     before = snapshot()
     proc = subprocess.run(
-        build_cmd(url, fmt),
+        build_cmd(url, fmt, quality),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     after = snapshot()
@@ -486,12 +495,16 @@ class Handler(BaseHTTPRequestHandler):
             return
         if fmt not in ("mp3", "mp4"):
             fmt = "mp3"
+        quality = str(data.get("quality") or "1080")
+        if quality not in QUALITY_HEIGHTS:
+            quality = "1080"
 
         with JOBS_LOCK:
-            # same video + same format already queued? reuse it instead of
-            # starting a second download that fights over the same files.
+            # same video + same format + same quality already queued? reuse it
+            # instead of starting a second download that fights over the files.
             for existing in JOBS.values():
                 if (existing["url"] == url and existing["format"] == fmt
+                        and existing.get("quality") == quality
                         and existing["status"] in ("pending", "running")):
                     self.reply(200, {"id": existing["id"],
                                      "status": existing["status"],
@@ -499,11 +512,12 @@ class Handler(BaseHTTPRequestHandler):
                     return
             job_id = str(uuid.uuid4())
             JOBS[job_id] = {
-                "id": job_id, "url": url, "format": fmt,
+                "id": job_id, "url": url, "format": fmt, "quality": quality,
                 "status": "pending", "file": "", "name": "",
                 "error": "", "started": time.time(), "ended": 0,
             }
-        threading.Thread(target=run_job, args=(job_id, url, fmt), daemon=True).start()
+        threading.Thread(target=run_job, args=(job_id, url, fmt, quality),
+                         daemon=True).start()
         prune_jobs()
         self.reply(202, {"id": job_id, "status": "pending"})
 

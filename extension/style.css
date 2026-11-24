@@ -70,6 +70,42 @@
   cursor: progress;
 }
 
+/* ---- quality picker ---- */
+
+.ytg-select {
+  font-family: "Roboto", "YouTube Sans", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  padding: 6px 6px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  flex: 0 0 auto;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  pointer-events: auto;
+  appearance: none;
+  -webkit-appearance: none;
+  text-align: center;
+  max-width: 108px;
+}
+
+.ytg-select:hover {
+  background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1));
+}
+
+.ytg-select:focus {
+  outline: 2px solid #ff0033;
+  outline-offset: 1px;
+}
+
+.ytg-select option {
+  color: #0f0f0f;
+  background: #fff;
+  font-weight: 500;
+}
+
 /* ---- toast ---- */
 
 .ytg-toast {
