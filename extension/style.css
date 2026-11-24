@@ -1,0 +1,112 @@
+/* style.css - blend with YouTube's own chrome in both themes */
+
+.ytg-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+  flex: 0 0 auto;
+}
+
+.ytg-wrap--floating {
+  position: fixed;
+  right: 18px;
+  bottom: 84px;
+  z-index: 2200;
+  padding: 6px 8px;
+  border-radius: 999px;
+  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  backdrop-filter: blur(8px);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  pointer-events: auto;
+}
+
+/* Shorts: sit on the left so we never cover YouTube's right-hand action stack */
+.ytg-wrap--shorts {
+  right: auto;
+  left: 16px;
+  bottom: 96px;
+  z-index: 2400;
+}
+
+.ytg-btn {
+  font-family: "Roboto", "YouTube Sans", system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2px;
+  padding: 6px 11px;
+  border-radius: 16px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  flex: 0 0 auto;
+  color: var(--yt-spec-text-primary, #0f0f0f);
+  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+
+.ytg-btn:hover {
+  background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1));
+}
+
+.ytg-btn:active {
+  transform: scale(0.97);
+}
+
+.ytg-btn--primary {
+  background: #ff0033;
+  color: #fff;
+}
+
+.ytg-btn--primary:hover {
+  background: #e6002d;
+}
+
+.ytg-btn.ytg-busy {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ---- toast ---- */
+
+.ytg-toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translate(-50%, 14px);
+  z-index: 3000;
+  max-width: min(560px, 86vw);
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-family: "Roboto", system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: #fff;
+  background: #212121;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.32);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+  pointer-events: none;
+  word-break: break-word;
+}
+
+.ytg-toast--in {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.ytg-toast--ok {
+  background: #1a7f37;
+}
+
+.ytg-toast--error {
+  background: #c02626;
+}
+
+/* light-theme safety: keep text readable on YouTube's light surfaces */
+html:not([dark]) .ytg-btn:not(.ytg-btn--primary) {
+  color: #0f0f0f;
+}

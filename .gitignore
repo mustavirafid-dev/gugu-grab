@@ -1,0 +1,26 @@
+# local machine state - never commit
+config.json
+python-path.txt
+helper.log
+*.log
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# downloads that land in the repo by accident
+*.mp3
+*.mp4
+*.m4a
+*.webm
+*.part
+*.ytdl
+
+# os / editor noise
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
