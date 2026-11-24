@@ -28,7 +28,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.5.0"
+VERSION = "1.6.0"
 ALLOWED_ORIGIN_PREFIXES = ("chrome-extension://", "moz-extension://")
 LOOPBACK_PREFIXES = ("http://127.0.0.1:", "http://localhost:", "http://[::1]:")
 
@@ -101,6 +101,13 @@ def build_cmd(url, fmt, quality="1080", box=None):
         "--no-overwrites",
         "--continue",
         "--windows-filenames",
+        # YouTube DASH streams arrive as thousands of small fragments. Fetching
+        # them one at a time is the main reason a long MP4 crawls - four in
+        # parallel is usually 3-5x faster on the same connection.
+        "--concurrent-fragments", "4",
+        "--retries", "10",
+        "--fragment-retries", "10",
+        "--socket-timeout", "30",
         "--output", out_tmpl,
     ]
     if fmt == "mp4":
@@ -125,6 +132,38 @@ def build_cmd(url, fmt, quality="1080", box=None):
         ]
     cmd.append(url)
     return cmd
+
+
+PROGRESS_RE = re.compile(r"\[download\]\s+([\d.]+)%")
+SPEED_RE = re.compile(r"\bat\s+([\d.]+\s*[KMGT]?i?B/s)")
+ETA_RE = re.compile(r"\bETA\s+([\d:]+)")
+
+
+def read_progress(job_id, line):
+    """Turn one yt-dlp output line into job state, so the browser can show a
+    real percentage instead of an indefinite spinner."""
+    with JOBS_LOCK:
+        j = JOBS.get(job_id)
+        if not j:
+            return
+        m = PROGRESS_RE.search(line)
+        if m:
+            j["stage"] = "downloading"
+            j["percent"] = round(float(m.group(1)), 1)
+            s = SPEED_RE.search(line)
+            if s:
+                j["speed"] = s.group(1).replace(" ", "")
+            e = ETA_RE.search(line)
+            if e:
+                j["eta"] = e.group(1)
+            return
+        if line.startswith("[Merger]") or "Merging formats" in line:
+            j["stage"] = "merging"
+            j["percent"] = 100.0
+        elif line.startswith(("[ExtractAudio]", "[ffmpeg]", "[FixupM3u8]")):
+            j["stage"] = "converting"
+        elif line.startswith("[Metadata]") or "Embedding" in line:
+            j["stage"] = "tagging"
 
 
 def snapshot(box=None):
@@ -184,10 +223,21 @@ def _run_locked(job_id, url, fmt, quality="1080"):
     log(f"job {job_id[:8]} start  fmt={fmt}  q={quality}  {url}")
 
     before = snapshot(box)
-    proc = subprocess.run(
+    # Popen + line streaming, not subprocess.run: yt-dlp prints progress as it
+    # goes and we want to surface it. The finished file is still found by the
+    # directory diff, never by parsing this output.
+    chunks = []
+    proc = subprocess.Popen(
         build_cmd(url, fmt, quality, box),
-        capture_output=True, text=True, encoding="utf-8", errors="replace",
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace", bufsize=1,
     )
+    try:
+        for raw in proc.stdout:
+            chunks.append(raw)
+            read_progress(job_id, raw.strip())
+    finally:
+        proc.wait()
     after = snapshot(box)
 
     # anything new on disk is a product of this job
@@ -195,7 +245,7 @@ def _run_locked(job_id, url, fmt, quality="1080"):
         n for n in after
         if n not in before and n.lower().endswith(MEDIA_EXT)
     ]
-    combined = ((proc.stdout or "") + "\n" + (proc.stderr or "")).strip()
+    combined = "".join(chunks).strip()
     err_line = next((ln.strip() for ln in combined.splitlines() if "ERROR" in ln), "")
 
     with JOBS_LOCK:
@@ -227,7 +277,7 @@ def _run_locked(job_id, url, fmt, quality="1080"):
             return
 
         err = err_line or combined[-400:] or f"yt-dlp exited {proc.returncode}"
-        j.update(status="error", error=err)
+        j.update(status="error", error=err, stage="")
         log(f"job {job_id[:8]} error  {err[:200]}")
 
 
@@ -520,6 +570,7 @@ class Handler(BaseHTTPRequestHandler):
                 "id": job_id, "url": url, "format": fmt, "quality": quality,
                 "status": "pending", "file": "", "name": "",
                 "error": "", "started": time.time(), "ended": 0,
+                "percent": 0.0, "speed": "", "eta": "", "stage": "",
             }
         threading.Thread(target=run_job, args=(job_id, url, fmt, quality),
                          daemon=True).start()

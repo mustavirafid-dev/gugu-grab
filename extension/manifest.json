@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gugu Grab",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "One-click MP3 / MP4 grab for YouTube and Shorts, powered by your local yt-dlp helper.",
   "minimum_chrome_version": "102",
   "action": {

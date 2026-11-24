@@ -2,7 +2,7 @@
 // Injects MP3 / MP4 buttons into YouTube's action bar (and a floating pill on
 // Shorts). Re-checks on SPA navigation and on DOM churn.
 
-const VERSION = "1.2.0";
+const VERSION = "1.3.0";
 const TAG = "[Gugu]";
 const WRAP_ID = "ytg-wrap";
 const TOAST_ID = "ytg-toast";
@@ -19,6 +19,7 @@ const QUALITIES = [
 ];
 
 let currentQuality = "1080";
+let activeBtn = null;
 
 let lastHref = "";
 
@@ -114,6 +115,7 @@ function makeButton(label, format, primary) {
     }
 
     b.dataset.busy = "1";
+    activeBtn = b;
     b.textContent = "...";
     b.classList.add("ytg-busy");
 
@@ -125,12 +127,12 @@ function makeButton(label, format, primary) {
     b.classList.remove("ytg-busy");
 
     if (!res || !res.ok) {
+      activeBtn = null;
       b.textContent = "\u2715";
       setTimeout(() => { b.textContent = b.dataset.label; }, 2500);
       toast(res?.error || "Could not reach the helper", "error");
     } else {
-      b.textContent = "\u2713";
-      setTimeout(() => { b.textContent = b.dataset.label; }, 1800);
+      // stay as "..." - the progress messages will fill in a percentage
       const what =
         format === "mp3"
           ? "MP3"
@@ -221,10 +223,39 @@ function tick() {
 // --------------------------------------------------------------- feedback ---
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type === "ytg:done") {
+  if (msg?.type === "ytg:progress") {
+    if (!activeBtn) return;
+    if (msg.stage === "merging") {
+      activeBtn.textContent = "merge";
+    } else if (msg.stage === "converting") {
+      activeBtn.textContent = "conv";
+    } else if (msg.stage === "tagging") {
+      activeBtn.textContent = "tag";
+    } else if (typeof msg.percent === "number" && msg.percent > 0) {
+      activeBtn.textContent = Math.floor(msg.percent) + "%";
+      activeBtn.title = [
+        msg.speed ? msg.speed : "",
+        msg.eta ? "ETA " + msg.eta : "",
+      ].filter(Boolean).join("  ");
+    }
+  } else if (msg?.type === "ytg:done") {
     toast("Saved: " + msg.name, "ok");
+    if (activeBtn) {
+      const b = activeBtn;
+      activeBtn = null;
+      b.textContent = "\u2713";
+      b.title = "";
+      setTimeout(() => { b.textContent = b.dataset.label; }, 2500);
+    }
   } else if (msg?.type === "ytg:error") {
     toast("Failed: " + msg.error, "error");
+    if (activeBtn) {
+      const b = activeBtn;
+      activeBtn = null;
+      b.textContent = "\u2715";
+      b.title = "";
+      setTimeout(() => { b.textContent = b.dataset.label; }, 3000);
+    }
   }
 });
 

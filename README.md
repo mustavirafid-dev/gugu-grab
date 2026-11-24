@@ -102,6 +102,10 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure.
 
+**A long video takes ages** — this is mostly physics, not a bug. An MP4 download fetches the video stream and the audio stream separately, then merges them, so it is two transfers plus a remux. A two-hour 4K video is 5–10 GB; on a 15 Mbps line that is 45 minutes no matter what tool you use. The button shows a live percentage — if it is climbing, it is working. For talks and podcasts use **MP3**: same content, roughly 1/20th the size, done in seconds.
+
+Downloads fetch four fragments in parallel by default (`--concurrent-fragments 4`), which is typically 3–5× faster on YouTube's DASH streams than the default single stream.
+
 **Non-ASCII titles look odd in a player** — expected on Windows console; the file on disk is correct. Verify with `ffprobe`.
 
 ---

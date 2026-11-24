@@ -73,6 +73,20 @@ async function watch(id, tabId) {
       return;
     }
 
+    if (job.status === "running") {
+      if (job.stage || job.percent) {
+        safeBadge(job.percent ? Math.floor(job.percent) + "%" : "...", "#555");
+        tell(tabId, {
+          type: "ytg:progress",
+          percent: job.percent,
+          speed: job.speed,
+          eta: job.eta,
+          stage: job.stage
+        });
+      }
+      continue;
+    }
+
     if (job.status === "done") {
       safeBadge("OK", "#1a7f37");
       tell(tabId, { type: "ytg:done", name: job.name || "saved" });
