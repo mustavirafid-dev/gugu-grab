@@ -88,9 +88,10 @@ QUALITY_HEIGHTS = {"best": None, "2160": 2160, "1440": 1440,
                    "1080": 1080, "720": 720, "480": 480}
 
 
-def build_cmd(url, fmt, quality="1080"):
+def build_cmd(url, fmt, quality="1080", box=None):
+    box = box or INBOX
     # %(title,id) = title, falling back to the video id if the title is empty
-    out_tmpl = str(INBOX / "%(title,id).140B [%(id)s].%(ext)s")
+    out_tmpl = str(box / "%(title,id).140B [%(id)s].%(ext)s")
     cmd = [
         sys.executable, "-m", "yt_dlp",
         "--no-playlist",
@@ -126,11 +127,12 @@ def build_cmd(url, fmt, quality="1080"):
     return cmd
 
 
-def snapshot():
+def snapshot(box=None):
     """Map of filename -> size, so we can detect what a job produced without
     trusting subprocess stdout (which mangles non-ASCII on Windows consoles)."""
+    box = box or INBOX
     try:
-        return {p.name: p.stat().st_size for p in INBOX.iterdir() if p.is_file()}
+        return {p.name: p.stat().st_size for p in box.iterdir() if p.is_file()}
     except OSError:
         return {}
 
@@ -174,16 +176,19 @@ def run_job(job_id, url, fmt, quality="1080"):
 
 
 def _run_locked(job_id, url, fmt, quality="1080"):
+    # pin the folder for this job: the user may change it at /setup while we
+    # are downloading, and the before/after diff must span one directory only
+    box = INBOX
     with JOBS_LOCK:
         JOBS[job_id].update(status="running", started=time.time())
     log(f"job {job_id[:8]} start  fmt={fmt}  q={quality}  {url}")
 
-    before = snapshot()
+    before = snapshot(box)
     proc = subprocess.run(
-        build_cmd(url, fmt, quality),
+        build_cmd(url, fmt, quality, box),
         capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
-    after = snapshot()
+    after = snapshot(box)
 
     # anything new on disk is a product of this job
     new_media = [
@@ -200,14 +205,14 @@ def _run_locked(job_id, url, fmt, quality="1080"):
         if new_media:
             # newest file wins
             pick = max(new_media, key=lambda n: after.get(n, 0))
-            src = INBOX / pick
+            src = box / pick
             clean = tidy_name(pick)
-            if clean != pick and not (INBOX / clean).exists():
+            if clean != pick and not (box / clean).exists():
                 # antivirus scanners and media players hold files briefly
                 for _ in range(6):
                     try:
-                        src.rename(INBOX / clean)
-                        src = INBOX / clean
+                        src.rename(box / clean)
+                        src = box / clean
                         break
                     except OSError:
                         time.sleep(0.5)
