@@ -6,6 +6,16 @@ const VERSION = "1.0.1";
 const TAG = "[Gugu]";
 const WRAP_ID = "ytg-wrap";
 const TOAST_ID = "ytg-toast";
+
+// Same mark as icons/icon128.png, inline so the toast needs no network request
+// and works on pages where extension resources are blocked by CSP.
+const MARK_SVG =
+  '<svg viewBox="0 0 128 128" width="20" height="20" aria-hidden="true" focusable="false">' +
+  '<rect width="128" height="128" rx="28" fill="#ff0033"/>' +
+  '<rect x="54" y="20" width="20" height="34" rx="4" fill="#fff"/>' +
+  '<path d="M40 48 L88 48 L64 78 Z" fill="#fff"/>' +
+  '<rect x="34" y="96" width="60" height="12" rx="6" fill="#fff"/>' +
+  "</svg>";
 const SEL_ID = "ytg-quality";
 
 // [value, label] - value is what the helper understands
@@ -79,7 +89,19 @@ function toast(message, kind = "info") {
   const el = document.createElement("div");
   el.id = TOAST_ID;
   el.className = "ytg-toast ytg-toast--" + kind;
-  el.textContent = message;
+
+  // Built as nodes rather than innerHTML: `message` can contain a filename,
+  // and filenames can contain angle brackets.
+  const mark = document.createElement("span");
+  mark.className = "ytg-toast__mark";
+  mark.innerHTML = MARK_SVG;
+
+  const text = document.createElement("span");
+  text.className = "ytg-toast__text";
+  text.textContent = message;
+
+  el.appendChild(mark);
+  el.appendChild(text);
   document.body.appendChild(el);
   requestAnimationFrame(() => el.classList.add("ytg-toast--in"));
   setTimeout(() => {

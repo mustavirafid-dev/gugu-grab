@@ -1,3 +1,5 @@
+<p align="center"><img src="logo.svg" width="104" alt="Gugu Grab logo — a white download arrow on a red tile"></p>
+
 # Gugu Grab
 
 **One-click MP3 / MP4 buttons inside YouTube. No account, no ads, no cloud, nothing uploaded.**
