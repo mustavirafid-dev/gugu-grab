@@ -6,6 +6,10 @@ Gugu Grab adds two buttons to every YouTube video and Short — `MP3` and `MP4`.
 
 It is a thin browser extension plus a small local helper that drives [yt-dlp](https://github.com/yt-dlp/yt-dlp) and `ffmpeg`. Nothing leaves your computer.
 
+![Gugu Grab in action: MP3 / MP4 / quality buttons on a YouTube video, and the finished tagged MP3 on disk](demo.gif)
+
+<p align="center"><sub><i>Buttons appear on the video page — a few seconds later the tagged file is on your disk.</i></sub></p>
+
 ```
 YouTube page  ──►  extension  ──►  127.0.0.1:8765  ──►  yt-dlp + ffmpeg  ──►  your folder
                 (button)          (local helper)        (download + convert)

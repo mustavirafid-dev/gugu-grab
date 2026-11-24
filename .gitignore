@@ -18,6 +18,9 @@ venv/
 *.part
 *.ytdl
 
+# ...but the README demo clip is a real asset
+!demo.mp4
+
 # os / editor noise
 Thumbs.db
 desktop.ini
