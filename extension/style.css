@@ -1,4 +1,13 @@
-/* style.css - blend with YouTube's own chrome in both themes */
+/* style.css - blend with YouTube's own chrome in both themes
+ *
+ * NOTE: do not borrow YouTube's --yt-spec-* custom properties here.
+ * They are not guaranteed to resolve inside an injected element, and when
+ * they fail the fallback is dark-on-dark - which made the MP4 chip invisible
+ * on the dark theme. Every colour below is explicit, and the dark-theme
+ * overrides hang off `html[dark]`, which is what YouTube sets on <html>.
+ */
+
+/* ---- container ---- */
 
 .ytg-wrap {
   display: inline-flex;
@@ -16,10 +25,14 @@
   z-index: 2200;
   padding: 6px 8px;
   border-radius: 999px;
-  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
+  background: rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(8px);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
   pointer-events: auto;
+}
+
+html[dark] .ytg-wrap--floating {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 /* Shorts: sit on the left so we never cover YouTube's right-hand action stack */
@@ -30,6 +43,8 @@
   z-index: 2400;
 }
 
+/* ---- buttons ---- */
+
 .ytg-btn {
   font-family: "Roboto", "YouTube Sans", system-ui, sans-serif;
   font-size: 12px;
@@ -38,30 +53,56 @@
   letter-spacing: 0.2px;
   padding: 6px 11px;
   border-radius: 16px;
-  border: 1px solid transparent;
   cursor: pointer;
   flex: 0 0 auto;
-  color: var(--yt-spec-text-primary, #0f0f0f);
-  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
-  transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
   white-space: nowrap;
   pointer-events: auto;
+  transition: background 0.15s ease, transform 0.08s ease, opacity 0.15s ease;
+
+  /* light theme: dark text on a light grey chip */
+  color: #0f0f0f;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .ytg-btn:hover {
-  background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1));
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .ytg-btn:active {
   transform: scale(0.97);
 }
 
-.ytg-btn--primary {
-  background: #ff0033;
-  color: #fff;
+/* dark theme: light text on a lighter chip */
+html[dark] .ytg-btn {
+  color: #f1f1f1;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
 }
 
-.ytg-btn--primary:hover {
+html[dark] .ytg-btn:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* MP3 - always the loud one. Declared last and with a doubled class so it
+   outranks the `html[dark] .ytg-btn` override above. */
+.ytg-btn.ytg-btn--primary {
+  color: #fff;
+  background: #ff0033;
+  border-color: #ff0033;
+}
+
+.ytg-btn.ytg-btn--primary:hover {
+  background: #e6002d;
+}
+
+html[dark] .ytg-btn.ytg-btn--primary {
+  color: #fff;
+  background: #ff0033;
+  border-color: #ff0033;
+}
+
+html[dark] .ytg-btn.ytg-btn--primary:hover {
   background: #e6002d;
 }
 
@@ -79,20 +120,31 @@
   line-height: 1;
   padding: 6px 6px;
   border-radius: 16px;
-  border: 1px solid transparent;
   cursor: pointer;
   flex: 0 0 auto;
-  color: var(--yt-spec-text-primary, #0f0f0f);
-  background: var(--yt-spec-badge-chip-background, rgba(0, 0, 0, 0.05));
   pointer-events: auto;
   appearance: none;
   -webkit-appearance: none;
   text-align: center;
   max-width: 108px;
+
+  color: #0f0f0f;
+  background: rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .ytg-select:hover {
-  background: var(--yt-spec-button-chip-background-hover, rgba(0, 0, 0, 0.1));
+  background: rgba(0, 0, 0, 0.16);
+}
+
+html[dark] .ytg-select {
+  color: #f1f1f1;
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+html[dark] .ytg-select:hover {
+  background: rgba(255, 255, 255, 0.24);
 }
 
 .ytg-select:focus {
@@ -140,9 +192,4 @@
 
 .ytg-toast--error {
   background: #c02626;
-}
-
-/* light-theme safety: keep text readable on YouTube's light surfaces */
-html:not([dark]) .ytg-btn:not(.ytg-btn--primary) {
-  color: #0f0f0f;
 }
