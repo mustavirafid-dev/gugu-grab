@@ -2,11 +2,11 @@
 
 # Gugu Grab
 
-**One-click MP3 / MP4 buttons inside YouTube. No account, no ads, no cloud, nothing uploaded.**
+**One-click MP3 / MP4 from YouTube — and 1800+ other sites. No account, no ads, no cloud, nothing uploaded.**
 
-<p><sub>Built by <a href="https://github.com/mustavirafid-dev"><b>Mustavi Rafid</b></a> — idea, design and code. · <b>v1.0.1</b></sub></p>
+<p><sub>Built by <a href="https://github.com/mustavirafid-dev"><b>Mustavi Rafid</b></a> — idea, design and code. · <b>v1.1.0</b></sub></p>
 
-Gugu Grab adds two buttons to every YouTube video and Short — `MP3` and `MP4`. Click one, the file is saved to a folder you pick. The audio conversion, metadata tagging and cover-art embedding happen on your own machine.
+Gugu Grab adds two buttons to every YouTube video and Short — `MP3` and `MP4`. Click one, the file is saved to a folder you pick. For everything else, paste a link into the toolbar popup and it goes through the same pipeline. The audio conversion, metadata tagging and cover-art embedding happen on your own machine.
 
 It is a thin browser extension plus a small local helper that drives [yt-dlp](https://github.com/yt-dlp/yt-dlp) and `ffmpeg`. Nothing leaves your computer.
 
@@ -61,7 +61,11 @@ Open any YouTube video. The buttons appear next to Share. On Shorts they float o
 
 ## Usage
 
-Click `MP3` or `MP4`. The button shows `…` while working, `✓` when saved, `✕` on failure. A toast tells you the filename.
+**On YouTube** — click `MP3` or `MP4`. The button shows `…` while working, `✓` when saved, `✕` on failure. A toast tells you the filename.
+
+**Anywhere else** — click the Gugu Grab icon in the toolbar, paste a link, pick MP3 or MP4, hit **Grab**. The popup shows live progress. If the tab you are on already holds a single video, the link is filled in for you.
+
+That second path works because the helper hands any `http(s)` URL straight to yt-dlp, which understands [1800+ sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) — Facebook, Instagram, TikTok, Vimeo, SoundCloud, Dailymotion, X and so on. There is no per-site scraping anywhere in this project, so nothing breaks when a site redesigns its page.
 
 **Video quality is selectable.** A dropdown sits next to the MP4 button: `Best available`, `2160p 4K`, `1440p`, `1080p`, `720p`, `480p`. It defaults to 1080p and remembers your choice. `Best available` grabs whatever the video actually offers, so a 4K upload gives you 4K.
 
@@ -106,7 +110,7 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **Buttons say "helper not running"** — the helper stopped. Run `start-helper.bat` and leave the window open.
 
-**Buttons don't appear at all** — reload the extension at `chrome://extensions` (the card should read **1.0.1**), then hard-refresh the YouTube tab (Ctrl+Shift+R). Content scripts do not reinject into tabs that were already open.
+**Buttons don't appear at all** — reload the extension at `chrome://extensions` (the card should read **1.1.0**), then hard-refresh the YouTube tab (Ctrl+Shift+R). Content scripts do not reinject into tabs that were already open.
 
 **A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure.
 

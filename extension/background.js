@@ -122,6 +122,15 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  // The popup polls through the worker rather than fetching directly, so the
+  // helper keeps a single origin allowlist and the popup needs no host access.
+  if (msg?.type === "ytg:job") {
+    api("/jobs/" + encodeURIComponent(msg.id))
+      .then(sendResponse)
+      .catch((e) => sendResponse({ error: String(e?.message || e) }));
+    return true;
+  }
+
   return false;
 });
 
