@@ -29,7 +29,7 @@ import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-VERSION = "1.6.0"
+VERSION = "1.0.1"
 ALLOWED_ORIGIN_PREFIXES = ("chrome-extension://", "moz-extension://")
 LOOPBACK_PREFIXES = ("http://127.0.0.1:", "http://localhost:", "http://[::1]:")
 
