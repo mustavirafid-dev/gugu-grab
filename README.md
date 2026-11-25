@@ -126,7 +126,9 @@ Downloads fetch four fragments in parallel by default (`--concurrent-fragments 4
 
 This is a UI over `yt-dlp`, which you can use directly without this project. It does not bypass DRM, paywalls or access controls, and it runs entirely on your machine with no server component.
 
-**You are responsible for what you download.** Downloading copyrighted material without permission may be illegal where you live and violates YouTube's Terms of Service. Use it for content you own, content licensed for reuse (Creative Commons, public domain), or content you have explicit permission to copy.
+**You are responsible for what you download.** Downloading copyrighted material without permission may be illegal where you live, and it breaks the terms of service of most platforms — YouTube, Facebook, Instagram, TikTok and the rest. Use it for content you own, content licensed for reuse (Creative Commons, public domain), or content you have explicit permission to copy.
+
+The "1800+ sites" figure is a property of `yt-dlp`, not an endorsement. Plenty of those sites prohibit downloading in their terms. That is between you and them.
 
 Provided as-is under the MIT licence, with no warranty of any kind.
 
