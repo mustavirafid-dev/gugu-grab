@@ -18,6 +18,7 @@ import argparse
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import threading
@@ -246,7 +247,10 @@ def _run_locked(job_id, url, fmt, quality="1080"):
         if n not in before and n.lower().endswith(MEDIA_EXT)
     ]
     combined = "".join(chunks).strip()
-    err_line = next((ln.strip() for ln in combined.splitlines() if "ERROR" in ln), "")
+    # Take the longest line that mentions ERROR: when a process is killed
+    # mid-write the last line is often a truncated "ERROR:" with no message.
+    err_lines = [ln.strip() for ln in combined.splitlines() if "ERROR" in ln]
+    err_line = max(err_lines, key=len) if err_lines else ""
 
     with JOBS_LOCK:
         j = JOBS[job_id]
@@ -587,6 +591,22 @@ class QuietServer(ThreadingHTTPServer):
     # SAME port, which silently gives you two helpers fighting over requests.
     allow_reuse_address = False
 
+    def server_bind(self):
+        # allow_reuse_address=False is not enough on Windows. Without
+        # SO_EXCLUSIVEADDRUSE a second process can still bind 8765 and the OS
+        # splits incoming requests between the two. That is how two yt-dlp
+        # downloads ended up writing the same output file and deadlocking at
+        # 0% - each helper had its own RUN_LOCK and its own JOBS dict, so the
+        # "one download at a time" guarantee did not hold across processes.
+        if os.name == "nt":
+            try:
+                self.socket.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1
+                )
+            except (AttributeError, OSError):
+                pass
+        super().server_bind()
+
     def handle_error(self, request, client_address):
         exc = sys.exc_info()[1]
         if isinstance(exc, (ConnectionResetError, ConnectionAbortedError,
@@ -635,7 +655,9 @@ def main():
 
     try:
         subprocess.run([sys.executable, "-m", "yt_dlp", "--version"],
-                       capture_output=True, check=True)
+                       capture_output=True, check=True, timeout=30)
+    except subprocess.TimeoutExpired:
+        sys.exit("yt-dlp did not answer within 30s. Try: python -m yt_dlp --version")
     except Exception:
         sys.exit("yt-dlp is not installed for this Python. Run: python -m pip install -U yt-dlp")
 
