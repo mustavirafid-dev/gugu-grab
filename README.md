@@ -4,7 +4,7 @@
 
 **One-click MP3 / MP4 from YouTube — and 1800+ other sites. No account, no ads, no cloud, nothing uploaded.**
 
-<p><sub>Built by <a href="https://github.com/mustavirafid-dev"><b>Mustavi Rafid</b></a> — idea, design and code. · <b>v1.1.0</b></sub></p>
+<p><sub>Built by <a href="https://github.com/mustavirafid-dev"><b>Mustavi Rafid</b></a> — idea, design and code. · <b>v1.0.1</b></sub></p>
 
 Gugu Grab adds two buttons to every YouTube video and Short — `MP3` and `MP4`. Click one, the file is saved to a folder you pick. For everything else, paste a link into the toolbar popup and it goes through the same pipeline. The audio conversion, metadata tagging and cover-art embedding happen on your own machine.
 
@@ -110,7 +110,7 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **Buttons say "helper not running"** — the helper stopped. Run `start-helper.bat` and leave the window open.
 
-**Buttons don't appear at all** — reload the extension at `chrome://extensions` (the card should read **1.1.0**), then hard-refresh the YouTube tab (Ctrl+Shift+R). Content scripts do not reinject into tabs that were already open.
+**Buttons don't appear at all** — reload the extension at `chrome://extensions` (the card should read **1.0.1**), then hard-refresh the YouTube tab (Ctrl+Shift+R). Content scripts do not reinject into tabs that were already open.
 
 **A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure.
 
