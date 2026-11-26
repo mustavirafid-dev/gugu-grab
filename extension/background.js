@@ -89,7 +89,11 @@ async function watch(id, tabId) {
 
     if (job.status === "done") {
       safeBadge("OK", "#1a7f37");
-      tell(tabId, { type: "ytg:done", name: job.name || "saved" });
+      tell(tabId, {
+        type: "ytg:done",
+        name: job.name || "saved",
+        bytes: job.bytes || 0,
+      });
       setTimeout(() => safeBadge("", null), 6000);
       return;
     }

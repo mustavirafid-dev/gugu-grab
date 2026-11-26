@@ -67,7 +67,11 @@ Open any YouTube video. The buttons appear next to Share. On Shorts they float o
 
 That second path works because the helper hands any `http(s)` URL straight to yt-dlp, which understands [1800+ sites](https://github.com/yt-dlp/yt-dlp/blob/master/supportedsites.md) — Facebook, Instagram, TikTok, Vimeo, SoundCloud, Dailymotion, X and so on. There is no per-site scraping anywhere in this project, so nothing breaks when a site redesigns its page.
 
-**Video quality is selectable.** A dropdown sits next to the MP4 button: `Best available`, `2160p 4K`, `1440p`, `1080p`, `720p`, `480p`. It defaults to 1080p and remembers your choice. `Best available` grabs whatever the video actually offers, so a 4K upload gives you 4K.
+**Quality is selectable, and the list changes with the format.** For MP4 the dropdown offers heights — `Best available`, `2160p 4K`, `1440p`, `1080p`, `720p`, `480p`, `360p`, `240p`, `144p`. For MP3 it offers bitrates — `320`, `192`, `128`, `96 kbps`. Each choice is remembered separately. `Best available` grabs whatever the video actually offers, so a 4K upload gives you 4K.
+
+Pick by size, not by habit. On one 15-minute lecture the same video came down as **47 MB at 1080p, 28 MB at 720p, 14 MB at 480p, 8 MB at 360p** — and the 360p copy is usually indistinguishable on a phone. For audio, the same lecture is **36 MB as 320 kbps MP3 but 11 MB at 96 kbps**, because the source stream was only 34 kbps to begin with; re-encoding it louder does not add detail, it only adds bytes.
+
+While a download runs the popup shows `47% · 2.3MiB/s · 11.5MiB · ETA 00:11`, and the finished message carries the real file size.
 
 Note that above 1080p YouTube only serves VP9 or AV1, so a 4K download is an `.mp4` containing VP9/AV1 rather than H.264. It plays fine in Chrome, VLC, mpv and modern editors, but older hardware players may not decode it.
 

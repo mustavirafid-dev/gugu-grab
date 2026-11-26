@@ -89,7 +89,13 @@ MEDIA_EXT = (".mp3", ".mp4", ".m4a", ".webm", ".opus", ".flac")
 
 
 QUALITY_HEIGHTS = {"best": None, "2160": 2160, "1440": 1440,
-                   "1080": 1080, "720": 720, "480": 480}
+                   "1080": 1080, "720": 720, "480": 480,
+                   # small sizes matter more than pixels when the point is to
+                   # have the file now, so the low end is offered too
+                   "360": 360, "240": 240, "144": 144}
+# MP3 target bitrate in kbps. Re-encoding a 34 kbps source at 320 kbps only
+# makes the file ten times bigger, so the low end is a real choice.
+AUDIO_KBPS = {"320", "192", "128", "96"}
 
 
 def build_cmd(url, fmt, quality="1080", box=None):
@@ -134,10 +140,11 @@ def build_cmd(url, fmt, quality="1080", box=None):
             "--embed-metadata",
         ]
     else:
+        kbps = str(quality) if str(quality) in AUDIO_KBPS else "320"
         cmd += [
             "--extract-audio",
             "--audio-format", "mp3",
-            "--audio-quality", "320K",
+            "--audio-quality", kbps + "K",
             "--embed-metadata",
             "--embed-thumbnail",
             "--convert-thumbnails", "jpg",
@@ -149,6 +156,8 @@ def build_cmd(url, fmt, quality="1080", box=None):
 PROGRESS_RE = re.compile(r"\[download\]\s+([\d.]+)%")
 SPEED_RE = re.compile(r"\bat\s+([\d.]+\s*[KMGT]?i?B/s)")
 ETA_RE = re.compile(r"\bETA\s+([\d:]+)")
+# "[download]  34.5% of  53.34MiB at ..." -> 53.34MiB
+SIZE_RE = re.compile(r"\bof\s+~?\s*([\d.]+\s*[KMGT]?i?B)")
 
 
 def read_progress(job_id, line):
@@ -168,6 +177,9 @@ def read_progress(job_id, line):
             e = ETA_RE.search(line)
             if e:
                 j["eta"] = e.group(1)
+            z = SIZE_RE.search(line)
+            if z:
+                j["size"] = z.group(1).replace(" ", "")
             return
         if "Retrying (" in line or "Got error" in line:
             # The percentage stops climbing while yt-dlp backs off. Say so,
@@ -297,7 +309,12 @@ def _run_locked(job_id, url, fmt, quality="1080"):
                         break
                     except OSError:
                         time.sleep(0.5)
-            j.update(status="done", file=str(src), name=src.name, stage="")
+            try:
+                size_bytes = src.stat().st_size
+            except OSError:
+                size_bytes = 0
+            j.update(status="done", file=str(src), name=src.name, stage="",
+                     bytes=size_bytes)
             announce_saved(src)
             return
 
@@ -659,9 +676,15 @@ class Handler(BaseHTTPRequestHandler):
             return
         if fmt not in ("mp3", "mp4"):
             fmt = "mp3"
-        quality = str(data.get("quality") or "1080")
-        if quality not in QUALITY_HEIGHTS:
-            quality = "1080"
+        quality = str(data.get("quality") or "")
+        # Video asks for a height, audio asks for a bitrate - validate against
+        # the right list so "1080" cannot end up as an MP3 bitrate.
+        if fmt == "mp4":
+            if quality not in QUALITY_HEIGHTS:
+                quality = "1080"
+        else:
+            if quality not in AUDIO_KBPS:
+                quality = "320"
 
         with JOBS_LOCK:
             # same video + same format + same quality already queued? reuse it
@@ -681,6 +704,7 @@ class Handler(BaseHTTPRequestHandler):
                 "status": "pending", "file": "", "name": "",
                 "error": "", "started": time.time(), "ended": 0,
                 "percent": 0.0, "speed": "", "eta": "", "stage": "",
+                "size": "", "bytes": 0,
                 "seq": _seq["next"],
             }
         threading.Thread(target=run_job, args=(job_id, url, fmt, quality),

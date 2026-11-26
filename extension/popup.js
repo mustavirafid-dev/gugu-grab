@@ -5,13 +5,26 @@
 // and posts it. That keeps it working when Facebook or Instagram redesign
 // their DOM, which is the whole reason it is a popup and not a content script.
 
-const QUALITIES = [
+// Video quality is a height in pixels; audio quality is a bitrate in kbps.
+// They are separate lists because "1080p" means nothing for an MP3 and
+// "192 kbps" means nothing for an MP4.
+const QUALITIES_VIDEO = [
   ["best", "Best available"],
   ["2160", "2160p 4K"],
   ["1440", "1440p"],
   ["1080", "1080p"],
   ["720", "720p"],
   ["480", "480p"],
+  ["360", "360p (small)"],
+  ["240", "240p (smaller)"],
+  ["144", "144p (smallest)"],
+];
+
+const QUALITIES_AUDIO = [
+  ["320", "320 kbps (best)"],
+  ["192", "192 kbps"],
+  ["128", "128 kbps (small)"],
+  ["96", "96 kbps (smallest)"],
 ];
 
 // Only prefill the box when the open tab plausibly holds a single video.
@@ -43,25 +56,47 @@ const VIDEO_HINT = new RegExp(
 const $ = (id) => document.getElementById(id);
 
 let format = "mp3";
-let quality = "1080";
+let quality = "320";
+let qualityVideo = "1080";
+let qualityAudio = "320";
 let pollTimer = null;
 
 // ---------------------------------------------------------------- prefs ---
 
 function savePrefs() {
   try {
-    chrome.storage.local.set({ format, quality });
+    chrome.storage.local.set({ format, qualityVideo, qualityAudio });
   } catch (e) {
     console.warn("[Gugu] could not save prefs:", e?.message);
   }
+}
+
+// Rebuild the dropdown for the current format: heights for video, bitrates
+// for audio. Keeping one shared list meant an MP3 could be asked for "1080p".
+function fillQualities() {
+  const list = format === "mp4" ? QUALITIES_VIDEO : QUALITIES_AUDIO;
+  const sel = $("quality");
+  sel.textContent = "";
+  for (const [value, label] of list) {
+    const opt = document.createElement("option");
+    opt.value = value;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+  if (!list.some(([v]) => v === quality)) {
+    quality = list[0][0];
+    if (format === "mp4") qualityVideo = quality;
+    else qualityAudio = quality;
+  }
+  sel.value = quality;
 }
 
 function syncFormatUI() {
   for (const b of document.querySelectorAll("#seg button")) {
     b.classList.toggle("on", b.dataset.fmt === format);
   }
-  // Quality only applies to video; for MP3 the helper always writes 320 kbps.
-  $("quality").disabled = format !== "mp4";
+  // Both formats have a quality: a height for MP4, a bitrate for MP3.
+  $("quality").disabled = false;
 }
 
 // --------------------------------------------------------------- status ---
@@ -93,6 +128,7 @@ function showProgress(job) {
     fill.style.width = Math.min(100, job.percent) + "%";
     const bits = [Math.floor(job.percent) + "%"];
     if (job.speed) bits.push(job.speed);
+    if (job.size) bits.push(job.size);
     if (job.eta) bits.push("ETA " + job.eta);
     // A retry keeps the percentage: the bytes already fetched are kept, so the
     // bar should not jump back to zero - but say that it is retrying.
@@ -127,6 +163,18 @@ function showProgress(job) {
   // Elapsed time is the only proof of life before the first percentage.
   const secs = typeof job.elapsed === "number" ? Math.floor(job.elapsed) : 0;
   $("msg").textContent = secs > 0 ? label + "  " + secs + "s" : label;
+}
+
+function humanSize(n) {
+  if (!n || n < 1024) return "";
+  const units = ["KB", "MB", "GB"];
+  let v = n;
+  let i = -1;
+  do {
+    v /= 1024;
+    i++;
+  } while (v >= 1024 && i < units.length - 1);
+  return v.toFixed(v >= 10 ? 0 : 1) + " " + units[i];
 }
 
 function setBusy(busy) {
@@ -191,7 +239,11 @@ function poll(id) {
       stopPolling();
       setBusy(false);
       // showStatus() resets the bar to 0%, so fill it afterwards.
-      showStatus("ok", "Saved — " + (job.name || "file"));
+      showStatus(
+        "ok",
+        "Saved — " + (job.name || "file") +
+          (job.bytes ? "  ·  " + humanSize(job.bytes) : "")
+      );
       $("bar").classList.remove("indeterminate");
       $("fill").style.width = "100%";
       return;
@@ -239,34 +291,32 @@ async function onGrab() {
 // ------------------------------------------------------------------ init ---
 
 async function init() {
-  let prefs = { format: "mp3", quality: "1080" };
+  let prefs = { format: "mp3", qualityVideo: "1080", qualityAudio: "320" };
   try {
     prefs = await chrome.storage.local.get(prefs);
   } catch (e) {
     console.warn("[Gugu] storage unavailable:", e?.message);
   }
   format = prefs.format === "mp4" ? "mp4" : "mp3";
-  quality = prefs.quality || "1080";
+  qualityVideo = prefs.qualityVideo || "1080";
+  qualityAudio = prefs.qualityAudio || "320";
+  quality = format === "mp4" ? qualityVideo : qualityAudio;
 
-  const sel = $("quality");
-  for (const [value, label] of QUALITIES) {
-    const opt = document.createElement("option");
-    opt.value = value;
-    opt.textContent = label;
-    sel.appendChild(opt);
-  }
-  if (!QUALITIES.some(([v]) => v === quality)) quality = "1080";
-  sel.value = quality;
-  sel.addEventListener("change", () => {
-    quality = sel.value;
+  $("quality").addEventListener("change", () => {
+    quality = $("quality").value;
+    if (format === "mp4") qualityVideo = quality;
+    else qualityAudio = quality;
     savePrefs();
   });
 
+  fillQualities();
   syncFormatUI();
 
   for (const b of document.querySelectorAll("#seg button")) {
     b.addEventListener("click", () => {
       format = b.dataset.fmt;
+      quality = format === "mp4" ? qualityVideo : qualityAudio;
+      fillQualities();
       syncFormatUI();
       savePrefs();
     });

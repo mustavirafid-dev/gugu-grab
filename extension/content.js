@@ -84,6 +84,18 @@ async function send(message) {
   }
 }
 
+function humanSize(n) {
+  if (!n || n < 1024) return "";
+  const units = ["KB", "MB", "GB"];
+  let v = n;
+  let i = -1;
+  do {
+    v /= 1024;
+    i++;
+  } while (v >= 1024 && i < units.length - 1);
+  return v.toFixed(v >= 10 ? 0 : 1) + " " + units[i];
+}
+
 function toast(message, kind = "info") {
   document.getElementById(TOAST_ID)?.remove();
   const el = document.createElement("div");
@@ -261,7 +273,7 @@ chrome.runtime.onMessage.addListener((msg) => {
       ].filter(Boolean).join("  ");
     }
   } else if (msg?.type === "ytg:done") {
-    toast("Saved: " + msg.name, "ok");
+    toast("Saved: " + msg.name + (msg.bytes ? "  ·  " + humanSize(msg.bytes) : ""), "ok");
     if (activeBtn) {
       const b = activeBtn;
       activeBtn = null;
