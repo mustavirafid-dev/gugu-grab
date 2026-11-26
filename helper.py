@@ -42,6 +42,9 @@ PORT = 8765
 MAX_JOBS = 200
 OPEN_FOLDER = True
 _open_state = {"opened": False, "saved": 0}
+# Monotonic ticket so the popup can say "2 jobs ahead of you". Threads start in
+# creation order, but they queue on RUN_LOCK, so the ticket is the real order.
+_seq = {"next": 0}
 
 CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 
@@ -108,7 +111,15 @@ def build_cmd(url, fmt, quality="1080", box=None):
         "--concurrent-fragments", "4",
         "--retries", "10",
         "--fragment-retries", "10",
-        "--socket-timeout", "30",
+        # A dropped connection used to throw away everything downloaded so far
+        # and start the file again - that is how one flaky minute turned into a
+        # seven minute job. Fetching in 10 MB ranges means a reset costs one
+        # range, not the whole transfer.
+        "--http-chunk-size", "10M",
+        # Fail a dead socket in 15s instead of 30s, and do not sit out long
+        # sleeps between attempts.
+        "--socket-timeout", "15",
+        "--retry-sleep", "1",
         "--output", out_tmpl,
     ]
     if fmt == "mp4":
@@ -157,6 +168,11 @@ def read_progress(job_id, line):
             e = ETA_RE.search(line)
             if e:
                 j["eta"] = e.group(1)
+            return
+        if "Retrying (" in line or "Got error" in line:
+            # The percentage stops climbing while yt-dlp backs off. Say so,
+            # otherwise a retry looks exactly like a hang.
+            j["stage"] = "retrying"
             return
         if line.startswith("[download]"):
             # Destination: / fragment chatter - the transfer has begun even
@@ -573,9 +589,22 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/jobs":
+            now = time.time()
             with JOBS_LOCK:
-                items = sorted(JOBS.values(), key=lambda j: j.get("started", 0), reverse=True)
-            self.reply(200, {"jobs": items[:50]})
+                items = sorted(JOBS.values(), key=lambda j: j.get("started", 0),
+                               reverse=True)[:50]
+                out = []
+                for j in items:
+                    row = dict(j)
+                    row["elapsed"] = round(
+                        (j.get("ended") or now) - j.get("started", now), 1)
+                    row["ahead"] = sum(
+                        1 for o in JOBS.values()
+                        if o["status"] in ("pending", "running")
+                        and o.get("seq", 0) < j.get("seq", 0)
+                    )
+                    out.append(row)
+            self.reply(200, {"jobs": out})
             return
 
         m = re.match(r"^/jobs/([0-9a-f\-]+)$", self.path)
@@ -591,6 +620,13 @@ class Handler(BaseHTTPRequestHandler):
                 out = dict(job)
                 end = job.get("ended") or time.time()
                 out["elapsed"] = round(end - job.get("started", end), 1)
+                # how many unfinished jobs are in front of this one in the queue
+                mine = job.get("seq", 0)
+                out["ahead"] = sum(
+                    1 for j in JOBS.values()
+                    if j["status"] in ("pending", "running")
+                    and j.get("seq", 0) < mine
+                )
                 self.reply(200, out)
             return
 
@@ -639,11 +675,13 @@ class Handler(BaseHTTPRequestHandler):
                                      "duplicate": True})
                     return
             job_id = str(uuid.uuid4())
+            _seq["next"] += 1
             JOBS[job_id] = {
                 "id": job_id, "url": url, "format": fmt, "quality": quality,
                 "status": "pending", "file": "", "name": "",
                 "error": "", "started": time.time(), "ended": 0,
                 "percent": 0.0, "speed": "", "eta": "", "stage": "",
+                "seq": _seq["next"],
             }
         threading.Thread(target=run_job, args=(job_id, url, fmt, quality),
                          daemon=True).start()

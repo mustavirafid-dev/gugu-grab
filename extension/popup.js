@@ -94,14 +94,28 @@ function showProgress(job) {
     const bits = [Math.floor(job.percent) + "%"];
     if (job.speed) bits.push(job.speed);
     if (job.eta) bits.push("ETA " + job.eta);
+    // A retry keeps the percentage: the bytes already fetched are kept, so the
+    // bar should not jump back to zero - but say that it is retrying.
+    if (String(job.stage || "").toLowerCase() === "retrying") bits.push("retrying");
     $("msg").textContent = bits.join("  ·  ");
     return;
   }
 
   bar.classList.add("indeterminate");
+
+  // Jobs run one at a time on purpose (two downloads writing the same file
+  // deadlocked once). Say where this one is instead of looking stalled.
+  if (typeof job.ahead === "number" && job.ahead > 0) {
+    $("msg").textContent =
+      "Queued — " + job.ahead + (job.ahead === 1 ? " job" : " jobs") + " ahead";
+    return;
+  }
+
   const stage = String(job.stage || "").toLowerCase();
   const label =
-    stage === "merging"
+    stage === "retrying"
+      ? "Connection dropped — retrying…"
+      : stage === "merging"
       ? "Merging video and audio…"
       : stage === "converting"
       ? "Converting to MP3…"
@@ -269,10 +283,24 @@ async function init() {
     if (tab?.url && VIDEO_HINT.test(tab.url)) {
       $("url").value = tab.url;
       $("go").focus();
-      return;
     }
   } catch {
     /* no activeTab grant - the box stays empty, which is fine */
+  }
+
+  // Closing the popup does not stop a download, so reattach to whatever is
+  // running. Without this, opening the popup mid-job looked like nothing had
+  // ever been started.
+  try {
+    const live = await chrome.runtime.sendMessage({ type: "ytg:active" });
+    if (live?.id && live.status) {
+      setBusy(true);
+      showProgress(live);
+      poll(live.id);
+      return;
+    }
+  } catch {
+    /* helper down - the Grab button will report it */
   }
   $("url").focus();
 }

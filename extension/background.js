@@ -131,6 +131,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
   }
 
+  if (msg?.type === "ytg:active") {
+    // The popup is destroyed on close but the download keeps going, so it asks
+    // what is still running and reattaches to it.
+    api("/jobs")
+      .then((d) => {
+        const live = (d.jobs || []).find(
+          (j) => j.status === "pending" || j.status === "running"
+        );
+        sendResponse(live || null);
+      })
+      .catch((e) => sendResponse({ error: String(e?.message || e) }));
+    return true;
+  }
+
   return false;
 });
 

@@ -124,7 +124,9 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **A long video takes ages** — this is mostly physics, not a bug. An MP4 download fetches the video stream and the audio stream separately, then merges them, so it is two transfers plus a remux. A two-hour 4K video is 5–10 GB; on a 15 Mbps line that is 45 minutes no matter what tool you use. The button shows a live percentage — if it is climbing, it is working. For talks and podcasts use **MP3**: same content, roughly 1/20th the size, done in seconds.
 
-Downloads fetch four fragments in parallel by default (`--concurrent-fragments 4`), which is typically 3–5× faster on YouTube's DASH streams than the default single stream.
+Downloads fetch four fragments in parallel by default (`--concurrent-fragments 4`), which is typically 3–5× faster on YouTube's DASH streams than the default single stream. Files are also pulled in 10 MB ranges (`--http-chunk-size 10M`), so a dropped connection costs one range instead of restarting the whole transfer — a flaky minute used to turn a 23-second download into a seven-minute one.
+
+**Grab several links in a row** — they queue. One download runs at a time on purpose (two at once once deadlocked on the same output file), and the popup shows `Queued — 2 jobs ahead`. You can close the popup; the download keeps going, and reopening it reattaches to whatever is running.
 
 **Non-ASCII titles look odd in a player** — expected on Windows console; the file on disk is correct. Verify with `ffprobe`.
 
