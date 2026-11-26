@@ -29,6 +29,13 @@ const VIDEO_HINT = new RegExp(
     "soundcloud\\.com/",
     "dailymotion\\.com/video/",
     "twitch\\.tv/videos/",
+    "bilibili\\.com/video/",
+    "b23\\.tv/",
+    "douyin\\.com/video/",
+    "v\\.qq\\.com/x/",
+    "youku\\.com/v_show/",
+    "iqiyi\\.com/v_",
+    "weibo\\.com/(tv|detail)/",
   ].join("|"),
   "i"
 );
@@ -92,12 +99,19 @@ function showProgress(job) {
 
   bar.classList.add("indeterminate");
   const stage = String(job.stage || "").toLowerCase();
-  $("msg").textContent =
+  const label =
     stage === "merging"
       ? "Merging video and audio…"
+      : stage === "converting"
+      ? "Converting to MP3…"
       : stage === "tagging"
       ? "Writing metadata…"
-      : "Downloading…";
+      : stage === "downloading"
+      ? "Downloading…"
+      : "Reading the link…";
+  // Elapsed time is the only proof of life before the first percentage.
+  const secs = typeof job.elapsed === "number" ? Math.floor(job.elapsed) : 0;
+  $("msg").textContent = secs > 0 ? label + "  " + secs + "s" : label;
 }
 
 function setBusy(busy) {
@@ -117,6 +131,7 @@ function stopPolling() {
 function poll(id) {
   stopPolling();
   let ticks = 0;
+  let misses = 0;
 
   pollTimer = setInterval(async () => {
     if (++ticks > 1800) {
@@ -132,9 +147,28 @@ function poll(id) {
     } catch {
       return; // transient - the worker may be waking up
     }
-    if (!job || job.error) return;
 
-    if (job.status === "running") {
+    // A reply with no status is not a job: it is either the helper being
+    // unreachable or a 404 because the helper was restarted mid-job. Bail out
+    // after a few tries instead of spinning silently for half an hour.
+    if (!job || !job.status) {
+      if (++misses < 4) return;
+      stopPolling();
+      setBusy(false);
+      const why = String(job?.error || "");
+      showStatus(
+        "err",
+        /no such job/i.test(why)
+          ? "The helper was restarted — the job is gone. Try again."
+          : why
+          ? "Helper not responding — is the black window still open?"
+          : "Lost contact with the helper. Try again."
+      );
+      return;
+    }
+    misses = 0;
+
+    if (job.status === "pending" || job.status === "running") {
       showProgress(job);
       return;
     }

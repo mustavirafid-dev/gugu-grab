@@ -158,6 +158,11 @@ def read_progress(job_id, line):
             if e:
                 j["eta"] = e.group(1)
             return
+        if line.startswith("[download]"):
+            # Destination: / fragment chatter - the transfer has begun even
+            # though no percentage has been printed yet.
+            j["stage"] = "downloading"
+            return
         if line.startswith("[Merger]") or "Merging formats" in line:
             j["stage"] = "merging"
             j["percent"] = 100.0
@@ -220,7 +225,11 @@ def _run_locked(job_id, url, fmt, quality="1080"):
     # are downloading, and the before/after diff must span one directory only
     box = INBOX
     with JOBS_LOCK:
-        JOBS[job_id].update(status="running", started=time.time())
+        # "starting" matters: yt-dlp can spend several seconds resolving the
+        # link before it prints a single progress line. Without this the popup
+        # sat at 0% with nothing to show and looked frozen.
+        JOBS[job_id].update(status="running", started=time.time(),
+                            stage="starting")
     log(f"job {job_id[:8]} start  fmt={fmt}  q={quality}  {url}")
 
     before = snapshot(box)
@@ -250,6 +259,8 @@ def _run_locked(job_id, url, fmt, quality="1080"):
     # Take the longest line that mentions ERROR: when a process is killed
     # mid-write the last line is often a truncated "ERROR:" with no message.
     err_lines = [ln.strip() for ln in combined.splitlines() if "ERROR" in ln]
+    # A killed process leaves a bare "ERROR:" - that is not a message.
+    err_lines = [ln for ln in err_lines if ln.strip(" :") != "ERROR"]
     err_line = max(err_lines, key=len) if err_lines else ""
 
     with JOBS_LOCK:
@@ -270,13 +281,13 @@ def _run_locked(job_id, url, fmt, quality="1080"):
                         break
                     except OSError:
                         time.sleep(0.5)
-            j.update(status="done", file=str(src), name=src.name)
+            j.update(status="done", file=str(src), name=src.name, stage="")
             announce_saved(src)
             return
 
         # nothing new: either it was already there, or it genuinely failed
         if proc.returncode == 0 or "has already been" in combined:
-            j.update(status="done", file="", name="already in inbox")
+            j.update(status="done", file="", name="already in inbox", stage="")
             log(f"job {job_id[:8]} skip   already present")
             return
 
@@ -522,7 +533,13 @@ class Handler(BaseHTTPRequestHandler):
             if not job:
                 self.reply(404, {"error": "no such job"})
             else:
-                self.reply(200, job)
+                # elapsed lets the popup prove it is alive even at 0%: yt-dlp
+                # can chew on a long playlist or a slow host for a while
+                # before the first progress line appears.
+                out = dict(job)
+                end = job.get("ended") or time.time()
+                out["elapsed"] = round(end - job.get("started", end), 1)
+                self.reply(200, out)
             return
 
         self.reply(404, {"error": "not found"})

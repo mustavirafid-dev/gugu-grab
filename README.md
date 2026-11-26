@@ -114,6 +114,12 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure.
 
+**The popup shows no percentage** — before the first byte arrives, yt-dlp spends a few seconds resolving the link, so the bar is indeterminate and the label reads `Reading the link… 4s`. The seconds keep climbing; that is proof it is alive. A real percentage appears once the transfer starts. If the label freezes at `Reading the link…` for minutes with no bytes on disk, the site is refusing the request (login wall, geo-block, DRM) — run `yt-dlp --simulate "<url>"` in a terminal to see the reason.
+
+**"The helper was restarted — the job is gone"** — the helper process is new, so its in-memory job list is empty. The file may still have downloaded; check the save folder. Just grab again.
+
+**Two `python.exe` processes in Task Manager** — normal on a virtualenv: the launcher `python.exe` starts the real interpreter as a child and waits. Only the child listens on 8765; there is no second helper.
+
 **A long video takes ages** — this is mostly physics, not a bug. An MP4 download fetches the video stream and the audio stream separately, then merges them, so it is two transfers plus a remux. A two-hour 4K video is 5–10 GB; on a 15 Mbps line that is 45 minutes no matter what tool you use. The button shows a live percentage — if it is climbing, it is working. For talks and podcasts use **MP3**: same content, roughly 1/20th the size, done in seconds.
 
 Downloads fetch four fragments in parallel by default (`--concurrent-fragments 4`), which is typically 3–5× faster on YouTube's DASH streams than the default single stream.
