@@ -112,7 +112,9 @@ A browser extension **cannot** download and convert audio by itself — there is
 
 **Buttons don't appear at all** — reload the extension at `chrome://extensions` (the card should read **1.0.1**), then hard-refresh the YouTube tab (Ctrl+Shift+R). Content scripts do not reinject into tabs that were already open.
 
-**A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure.
+**"This site is not supported"** — yt-dlp's extractor list is huge but not universal. The known gaps: **WeChat Channels (视频号)** and anything else that only exists inside a phone app, **DRM-protected** streaming services (Netflix, Disney+, Spotify), and sites that need your logged-in session. Gugu Grab deliberately never touches your accounts, so those cannot be fixed by a patch. For a video stuck in an app, `screen-recorder.bat` in this repo captures it instead.
+
+**A download fails** — press F12 on the YouTube tab, open Console, and look for lines starting with `[Gugu]`. The helper window also prints a `SAVED` block for every success and the exact error for every failure. In the popup, hover the red message to see yt-dlp's original wording.
 
 **The popup shows no percentage** — before the first byte arrives, yt-dlp spends a few seconds resolving the link, so the bar is indeterminate and the label reads `Reading the link… 4s`. The seconds keep climbing; that is proof it is alive. A real percentage appears once the transfer starts. If the label freezes at `Reading the link…` for minutes with no bytes on disk, the site is refusing the request (login wall, geo-block, DRM) — run `yt-dlp --simulate "<url>"` in a terminal to see the reason.
 

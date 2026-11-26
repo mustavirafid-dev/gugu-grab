@@ -292,8 +292,60 @@ def _run_locked(job_id, url, fmt, quality="1080"):
             return
 
         err = err_line or combined[-400:] or f"yt-dlp exited {proc.returncode}"
-        j.update(status="error", error=err, stage="")
+        j.update(status="error", error=friendly_error(err, url),
+                 error_raw=err, stage="")
         log(f"job {job_id[:8]} error  {err[:200]}")
+
+
+# yt-dlp's errors are written for people who already know yt-dlp. The popup
+# has one line to work with, so the common ones get translated into something
+# that says what happened and what to do about it.
+ERROR_HINTS = [
+    # Site-specific first: "Unsupported URL" is also what a known-but-blocked
+    # site produces, and the generic line would bury the useful one.
+    (r"weixin\.qq\.com|channels\.weixin\.qq\.com",
+     "WeChat Channels (视频号) is not supported by the engine. Its videos are "
+     "locked inside the WeChat app, so there is no link to download. Screen-record "
+     "it instead."),
+    (r"Unsupported URL",
+     "This site is not supported. The engine covers 1800+ sites, but not this one."),
+    (r"Private video|This video is private",
+     "This video is private. Only the owner can download it."),
+    (r"Video unavailable|has been removed|no longer available",
+     "This video is unavailable. It was deleted, made private, or blocked."),
+    (r"members[- ]only|Join this channel",
+     "This video is members-only. The engine has no access to your paid account."),
+    (r"Sign in to confirm|login required|requires authentication|cookies",
+     "The site wants a logged-in session. Gugu Grab does not touch your accounts, "
+     "so this one cannot be fetched."),
+    (r"not available in your country|geo[- ]?restrict|blocked it in your country",
+     "This video is geo-blocked in your region."),
+    (r"DRM|digital rights management|protected by",
+     "This video is DRM-protected. It cannot be downloaded by any tool."),
+    (r"HTTP Error 404",
+     "The page does not exist (404). The link may be wrong or the video was deleted."),
+    (r"HTTP Error 403",
+     "The site refused the request (403). It usually means the link expired or "
+     "needs a login."),
+    (r"HTTP Error 429|Too Many Requests",
+     "The site is rate-limiting you (429). Wait a few minutes and try again."),
+    (r"timed out|timeout|Connection reset|Temporary failure",
+     "The connection dropped. Check your internet and try again."),
+    (r"Unable to download webpage|Failed to resolve",
+     "Could not reach that page. Check the link opens in a normal browser tab."),
+    (r"Requested format is not available",
+     "That quality is not offered for this video. Try 1080p or Best available."),
+]
+
+
+def friendly_error(raw, url=""):
+    """Map a yt-dlp error to one readable line, keeping the raw text as detail."""
+    blob = f"{raw} {url}"
+    for pattern, message in ERROR_HINTS:
+        if re.search(pattern, blob, re.I):
+            return message
+    return raw
+
 
 
 def prune_jobs():

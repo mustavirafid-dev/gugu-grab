@@ -73,6 +73,7 @@ function showStatus(kind, text, indeterminate) {
   box.hidden = false;
   $("msg").className = kind === "ok" ? "ok" : kind === "err" ? "err" : "";
   $("msg").textContent = text;
+  $("msg").title = "";
   bar.classList.toggle("indeterminate", !!indeterminate);
   if (indeterminate) {
     fill.style.width = "";
@@ -185,6 +186,8 @@ function poll(id) {
       stopPolling();
       setBusy(false);
       showStatus("err", job.error || "Download failed.");
+      // Hover the message for yt-dlp's own wording.
+      $("msg").title = job.error_raw || "";
     }
   }, 1000);
 }
